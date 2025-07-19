@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Accessible
@@ -187,9 +189,11 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.currentRecomposeScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -210,6 +214,8 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.abachoose.composables.AnimatedDialog
+import com.example.abachoose.domain.Question
+import com.example.abachoose.domain.ScreenConfig
 import com.example.abachoose.domain.makeAbTest
 import com.example.abachoose.domain.makeColorTest
 import com.example.abachoose.domain.makeLetterAssociationTest
@@ -225,7 +231,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ABAChooseTheme {
-                val viewModel = MainViewModel()
+                val viewModel by viewModels<MainViewModel>()
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                 val scope = rememberCoroutineScope()
 
@@ -363,30 +369,32 @@ fun ChooseTest(viewModel: MainViewModel, paddingValues: PaddingValues) {
             .fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column (modifier = Modifier
+        LazyColumn (modifier = Modifier
             .fillMaxHeight()
             .padding(top = 24.dp)) {
             viewModel.allTests.forEachIndexed { i, test ->
-                Button(
-                    modifier = Modifier
-                        .fillMaxWidth(0.6f)
-                        .height(64.dp)
-                        .padding(bottom = 12.dp),
-                    onClick = {
-                        if (test.name == "abTest") {
-                            viewModel.currentTest = makeAbTest()
-                        } else if (test.name == "colorTest") {
-                            viewModel.currentTest = makeColorTest()
-                        } else if (test.name == "letterAssociationTest") {
-                            viewModel.currentTest = makeLetterAssociationTest()
-                        } else if (test.name == "wordAssociationTest") {
-                            viewModel.currentTest = makeWordAssociationTest()
-                        } else {
-                            // err
+                item {
+                    Button(
+                        modifier = Modifier
+                            .fillMaxWidth(0.6f)
+                            .height(64.dp)
+                            .padding(bottom = 12.dp),
+                        onClick = {
+                            if (test.name == "abTest") {
+                                viewModel.currentTest = makeAbTest()
+                            } else if (test.name == "colorTest") {
+                                viewModel.currentTest = makeColorTest()
+                            } else if (test.name == "letterAssociationTest") {
+                                viewModel.currentTest = makeLetterAssociationTest()
+                            } else if (test.name == "wordAssociationTest") {
+                                viewModel.currentTest = makeWordAssociationTest()
+                            } else {
+                                // err
+                            }
                         }
+                    ) {
+                        Text(test.displayName)
                     }
-                ) {
-                    Text(test.displayName)
                 }
             }
         }
@@ -403,7 +411,9 @@ fun Chooser(
             .padding(paddingValues)
             .fillMaxSize(),
     ) {
-        var size by remember { mutableStateOf(IntSize.Zero) }
+        val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+        val screenConfig = ScreenConfig.configureScreenSize(windowSizeClass)
+
         val currentQuestion = viewModel.currentTest.questions[viewModel.currentQuestionIndex]
         // random img position
         val imgA = if (viewModel.imgAPos == 0) { painterResource(currentQuestion.option1ImgSrc) } else { painterResource(currentQuestion.option2ImgSrc) }
@@ -411,48 +421,166 @@ fun Chooser(
         // normalize image size
         val imgSize = if (imgA.intrinsicSize.height < imgB.intrinsicSize.height) { imgA } else { imgB }
 
-        Column (
-            modifier = Modifier
-                .onSizeChanged { size = it }
-                .fillMaxHeight(.90f)
-                .fillMaxWidth(),
-            verticalArrangement = Arrangement.SpaceAround,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        )  {
-            var titleFontSize by remember {
-                mutableStateOf(96.sp)
-            }
-            // header
-            Row (
+        when(screenConfig) {
+            ScreenConfig.MOBILE_PORTRAIT -> MobilePortrait(viewModel, imgA, imgB, imgSize, currentQuestion)
+            ScreenConfig.MOBILE_LANDSCAPE -> MobileLandscape(viewModel, imgA, imgB, currentQuestion)
+            ScreenConfig.DESKTOP_TABLET -> MobilePortrait(viewModel, imgA, imgB, imgSize, currentQuestion)
+        }
+    }
+}
+
+@Composable
+fun MobileLandscape(
+    viewModel: MainViewModel,
+    imgA: Painter,
+    imgB: Painter,
+    currentQuestion: Question
+) {
+    var titleFontSize by remember {
+        mutableStateOf(96.sp)
+    }
+
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Row (
+            modifier = Modifier.fillMaxSize(0.9f),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth(0.9f),
-                horizontalArrangement = Arrangement.Center
+                    .width(200.dp)
+                    .height(200.dp),
+                contentAlignment = Alignment.TopCenter
             ) {
-                Text(
-                    text = currentQuestion.question.replaceFirstChar { it.uppercase() },
-                    modifier = Modifier,
-                    textAlign = TextAlign.Center,
-                    fontSize = titleFontSize,
-                    maxLines = 1,
-                    onTextLayout = { if (it.multiParagraph.didExceedMaxLines) { titleFontSize *= .9F } }
-                )
+                Row (
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Card (
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(start = 4.dp, end = 2.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(
+                                width = 4.dp,
+                                color =
+                                    if (!viewModel.imgAClicked) {
+                                        Color.Black
+                                    } else if ((viewModel.imgAClicked || viewModel.imgBClicked) && (if (viewModel.imgAPos == 0) {
+                                            currentQuestion.option1Name == currentQuestion.answer
+                                        } else {
+                                            currentQuestion.option2Name == currentQuestion.answer
+                                        })
+                                    ) {
+                                        Color.Green
+                                    } else {
+                                        Color.Red
+                                    },
+                                shape = RoundedCornerShape(8.dp)
+                            ),
+                        onClick = {
+                            // card toggle
+                            if (!viewModel.imgBClicked) {
+                                viewModel.imgAClicked = !viewModel.imgAClicked
+                            }
+                            // current user answer
+                            if (viewModel.imgAClicked) {
+                                viewModel.selectedA = if (viewModel.imgAPos == 0) { currentQuestion.option1Name } else { currentQuestion.option2Name }
+                            } else {
+                                viewModel.selectedA = ""
+                            }
+                        },
+                        enabled = (!viewModel.imgAClicked && !viewModel.imgBClicked) || !viewModel.getQuestionStatus()
+                    ) {
+                        Image(
+                            imgA,
+                            contentDescription = currentQuestion.name,
+                            modifier = Modifier
+                                .weight(1f, fill = false)
+                                .aspectRatio(200.dp/200.dp)
+                                .fillMaxWidth()
+                                .background(Color.White)
+                        )
+                    }
+                }
             }
-            // Images
-            Row (
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
+            // scoreboard
+            Box(
+                modifier = Modifier
+                    .width(200.dp)
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Card (
-                    modifier = Modifier
-                        .fillMaxWidth(.5f)
-                        .padding(start = 4.dp, end = 2.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .border(
-                            width = 4.dp,
-                            color =
-                                if (!viewModel.imgAClicked) {
+                Column (
+                    modifier = Modifier.fillMaxHeight().padding(vertical = 8.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row (
+                        modifier = Modifier
+                            .fillMaxWidth(0.9f),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = currentQuestion.question.replaceFirstChar { it.uppercase() },
+                            modifier = Modifier,
+                            textAlign = TextAlign.Center,
+                            fontSize = titleFontSize,
+                            maxLines = 1,
+                            onTextLayout = { if (it.multiParagraph.didExceedMaxLines) { titleFontSize *= .95F } }
+                        )
+                    }
+                    // scoreboard
+                    Row(
+                        modifier = Modifier.fillMaxWidth(0.9f),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .border(width = 2.dp, color = Color.Black, shape = RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(text = viewModel.currentTest.totalScore.toString())
+                        }
+                        Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) { Text("/") }
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .border(width = 2.dp, color = Color.Black, shape = RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = (viewModel.currentTest.questions.size + 1).toString(),
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+            }
+            // image b
+            Box(
+                modifier = Modifier
+                    .width(200.dp)
+                    .height(200.dp),
+                contentAlignment = Alignment.TopCenter
+            ) {
+
+                Row (
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Card (
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(start = 2.dp, end = 4.dp)
+                            .border(
+                                width = 4.dp,
+                                color = if (!viewModel.imgBClicked) {
                                     Color.Black
-                                } else if ((viewModel.imgAClicked || viewModel.imgBClicked) && (if (viewModel.imgAPos == 0) {
+                                } else if ((viewModel.imgAClicked || viewModel.imgBClicked) && (if (viewModel.imgBPos == 0) {
                                         currentQuestion.option1Name == currentQuestion.answer
                                     } else {
                                         currentQuestion.option2Name == currentQuestion.answer
@@ -462,40 +590,87 @@ fun Chooser(
                                 } else {
                                     Color.Red
                                 },
-                            shape = RoundedCornerShape(8.dp)
-                        ),
-                    onClick = {
-                        // card toggle
-                        if (!viewModel.imgBClicked) {
-                            viewModel.imgAClicked = !viewModel.imgAClicked
-                        }
-                        // current user answer
-                        if (viewModel.imgAClicked) {
-                            viewModel.selectedA = if (viewModel.imgAPos == 0) { currentQuestion.option1Name } else { currentQuestion.option2Name }
-                        } else {
-                            viewModel.selectedA = ""
-                        }
-                    },
-                    enabled = (!viewModel.imgAClicked && !viewModel.imgBClicked) || !viewModel.getQuestionStatus()
-                ) {
-                    Image(
-                        imgA,
-                        contentDescription = currentQuestion.name,
-                        modifier = Modifier
-                            .weight(1f, fill = false)
-                            .aspectRatio(imgSize.intrinsicSize.width / imgSize.intrinsicSize.height)
-                            .fillMaxWidth()
-                            .background(Color.White)
-                    )
+                                shape = RoundedCornerShape(8.dp)
+                            ),
+                        onClick = {
+                            // card toggle
+                            if (!viewModel.imgAClicked) {
+                                viewModel.imgBClicked = !viewModel.imgBClicked
+                            }
+                            // current user answer
+                            if (viewModel.imgBClicked) {
+                                viewModel.selectedB = if (viewModel.imgBPos == 0) { currentQuestion.option1Name } else { currentQuestion.option2Name }
+                            } else {
+                                viewModel.selectedB = ""
+                            }
+                        },
+                        enabled = (!viewModel.imgAClicked && !viewModel.imgBClicked) || !viewModel.getQuestionStatus()
+                    ) {
+                        Image(
+                            imgB,
+                            contentDescription = currentQuestion.name,
+                            modifier = Modifier
+                                .weight(1f, fill = false)
+                                .aspectRatio(200.dp/200.dp)
+                                .fillMaxWidth()
+                                .background(Color.White)
+                        )
+                    }
                 }
-                Card (
-                    modifier = Modifier
-                        .padding(start = 2.dp, end = 4.dp)
-                        .border(
-                            width = 4.dp,
-                            color = if (!viewModel.imgBClicked) {
+            }
+        }
+    }
+}
+
+@Composable
+fun MobilePortrait(
+    viewModel: MainViewModel,
+    imgA: Painter,
+    imgB: Painter,
+    imgSize: Painter,
+    currentQuestion: Question
+) {
+    Column (
+        modifier = Modifier
+            .fillMaxHeight(.90f)
+            .fillMaxWidth(),
+        verticalArrangement = Arrangement.SpaceAround,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    )  {
+        var titleFontSize by remember {
+            mutableStateOf(96.sp)
+        }
+        // header
+        Row (
+            modifier = Modifier
+                .fillMaxWidth(0.9f),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = currentQuestion.question.replaceFirstChar { it.uppercase() },
+                modifier = Modifier,
+                textAlign = TextAlign.Center,
+                fontSize = titleFontSize,
+                maxLines = 1,
+                onTextLayout = { if (it.multiParagraph.didExceedMaxLines) { titleFontSize *= .95F } }
+            )
+        }
+        // Images
+        Row (
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Card (
+                modifier = Modifier
+                    .fillMaxWidth(.5f)
+                    .padding(start = 4.dp, end = 2.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(
+                        width = 4.dp,
+                        color =
+                            if (!viewModel.imgAClicked) {
                                 Color.Black
-                            } else if ((viewModel.imgAClicked || viewModel.imgBClicked) && (if (viewModel.imgBPos == 0) {
+                            } else if ((viewModel.imgAClicked || viewModel.imgBClicked) && (if (viewModel.imgAPos == 0) {
                                     currentQuestion.option1Name == currentQuestion.answer
                                 } else {
                                     currentQuestion.option2Name == currentQuestion.answer
@@ -505,33 +680,98 @@ fun Chooser(
                             } else {
                                 Color.Red
                             },
-                            shape = RoundedCornerShape(8.dp)
-                        ),
-                    onClick = {
-
-                        // card toggle
-                        if (!viewModel.imgAClicked) {
-                            viewModel.imgBClicked = !viewModel.imgBClicked
-                        }
-                        // current user answer
-                        if (viewModel.imgBClicked) {
-                            viewModel.selectedB = if (viewModel.imgBPos == 0) { currentQuestion.option1Name } else { currentQuestion.option2Name }
+                        shape = RoundedCornerShape(8.dp)
+                    ),
+                onClick = {
+                    // card toggle
+                    if (!viewModel.imgBClicked) {
+                        viewModel.imgAClicked = !viewModel.imgAClicked
+                    }
+                    // current user answer
+                    if (viewModel.imgAClicked) {
+                        viewModel.selectedA = if (viewModel.imgAPos == 0) { currentQuestion.option1Name } else { currentQuestion.option2Name }
+                    } else {
+                        viewModel.selectedA = ""
+                    }
+                },
+                enabled = (!viewModel.imgAClicked && !viewModel.imgBClicked) || !viewModel.getQuestionStatus()
+            ) {
+                Image(
+                    imgA,
+                    contentDescription = currentQuestion.name,
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .aspectRatio(imgSize.intrinsicSize.width / imgSize.intrinsicSize.height)
+                        .fillMaxWidth()
+                        .background(Color.White)
+                )
+            }
+            Card (
+                modifier = Modifier
+                    .padding(start = 2.dp, end = 4.dp)
+                    .border(
+                        width = 4.dp,
+                        color = if (!viewModel.imgBClicked) {
+                            Color.Black
+                        } else if ((viewModel.imgAClicked || viewModel.imgBClicked) && (if (viewModel.imgBPos == 0) {
+                                currentQuestion.option1Name == currentQuestion.answer
+                            } else {
+                                currentQuestion.option2Name == currentQuestion.answer
+                            })
+                        ) {
+                            Color.Green
                         } else {
-                            viewModel.selectedB = ""
-                        }
-                    },
-                    enabled = (!viewModel.imgAClicked && !viewModel.imgBClicked) || !viewModel.getQuestionStatus()
-                ) {
-                    Image(
-                        imgB,
-                        contentDescription = currentQuestion.name,
-                        modifier = Modifier
-                            .weight(1f, fill = false)
-                            .aspectRatio(imgSize.intrinsicSize.width / imgSize.intrinsicSize.height)
-                            .fillMaxWidth()
-                            .background(Color.White)
-                    )
-                }
+                            Color.Red
+                        },
+                        shape = RoundedCornerShape(8.dp)
+                    ),
+                onClick = {
+                    // card toggle
+                    if (!viewModel.imgAClicked) {
+                        viewModel.imgBClicked = !viewModel.imgBClicked
+                    }
+                    // current user answer
+                    if (viewModel.imgBClicked) {
+                        viewModel.selectedB = if (viewModel.imgBPos == 0) { currentQuestion.option1Name } else { currentQuestion.option2Name }
+                    } else {
+                        viewModel.selectedB = ""
+                    }
+                },
+                enabled = (!viewModel.imgAClicked && !viewModel.imgBClicked) || !viewModel.getQuestionStatus()
+            ) {
+                Image(
+                    imgB,
+                    contentDescription = currentQuestion.name,
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .aspectRatio(imgSize.intrinsicSize.width / imgSize.intrinsicSize.height)
+                        .fillMaxWidth()
+                        .background(Color.White)
+                )
+            }
+        }
+        // scoreboard
+        Row(
+            modifier = Modifier.fillMaxWidth(0.35f),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .border(width = 2.dp, color = Color.Black, shape = RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = viewModel.currentTest.totalScore.toString())
+            }
+            Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) { Text("/") }
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .border(width = 2.dp, color = Color.Black, shape = RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = (viewModel.currentTest.questions.size + 1).toString())
             }
         }
     }
@@ -628,7 +868,7 @@ fun navigateQuestion(viewModel: MainViewModel, buttonAction: () -> Unit) {
     currentQuestion.answered = true
     currentQuestion.answeredCorrectly = viewModel.selectedA == currentQuestion.answer || viewModel.selectedB == currentQuestion.answer
 
-    if (currentQuestion.answeredCorrectly!!) {
+    if (currentQuestion.answeredCorrectly!! && currentQuestion.score == 0) {
         currentQuestion.score = 1
         viewModel.currentTest.totalScore += 1
     }

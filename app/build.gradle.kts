@@ -65,6 +65,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.generativeai)
 
+    implementation(libs.material3.adaptive)
+
     testImplementation(libs.junit)
 
     androidTestImplementation(libs.androidx.junit)

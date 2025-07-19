@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.ViewModel
 import com.example.abachoose.domain.Test
 import com.example.abachoose.domain.makeAbTest
 import com.example.abachoose.domain.makeColorTest
@@ -12,7 +13,7 @@ import com.example.abachoose.domain.makeLetterAssociationTest
 import com.example.abachoose.domain.makeWordAssociationTest
 
 
-class MainViewModel {
+class MainViewModel: ViewModel() {
     // tests
     var abTest = makeAbTest()
     var colorTest = makeColorTest()
