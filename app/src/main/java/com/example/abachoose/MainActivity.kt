@@ -393,40 +393,6 @@ fun ChooseTest(viewModel: MainViewModel, paddingValues: PaddingValues) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TopBar(
-    titleText: String,
-    drawerState: DrawerState,
-    scope: CoroutineScope
-) {
-    CenterAlignedTopAppBar(
-        title = {
-            Text(
-                text = titleText
-            )
-        },
-        actions = {
-            IconButton(onClick = {}) {
-                Icon(imageVector = Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "")
-            }
-        },
-        navigationIcon = {
-            IconButton(onClick = {
-                scope.launch {
-                    if (drawerState.isClosed) {
-                        drawerState.open()
-                    } else {
-                        drawerState.close()
-                    }
-                }
-            }) {
-                Icon(Icons.Default.Menu, contentDescription = "Menu")
-            }
-        }
-    )
-}
-
 @Composable
 fun Chooser(
     viewModel: MainViewModel,
@@ -450,8 +416,8 @@ fun Chooser(
                 .onSizeChanged { size = it }
                 .fillMaxHeight(.90f)
                 .fillMaxWidth(),
-                verticalArrangement = Arrangement.SpaceAround,
-                horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceAround,
+            horizontalAlignment = Alignment.CenterHorizontally,
         )  {
             var titleFontSize by remember {
                 mutableStateOf(96.sp)
@@ -501,7 +467,7 @@ fun Chooser(
                     onClick = {
                         // card toggle
                         if (!viewModel.imgBClicked) {
-                            viewModel.imgAClicked = true
+                            viewModel.imgAClicked = !viewModel.imgAClicked
                         }
                         // current user answer
                         if (viewModel.imgAClicked) {
@@ -510,7 +476,7 @@ fun Chooser(
                             viewModel.selectedA = ""
                         }
                     },
-                    enabled = !viewModel.imgAClicked && !viewModel.imgBClicked
+                    enabled = (!viewModel.imgAClicked && !viewModel.imgBClicked) || !viewModel.getQuestionStatus()
                 ) {
                     Image(
                         imgA,
@@ -542,9 +508,10 @@ fun Chooser(
                             shape = RoundedCornerShape(8.dp)
                         ),
                     onClick = {
+
                         // card toggle
                         if (!viewModel.imgAClicked) {
-                            viewModel.imgBClicked = true
+                            viewModel.imgBClicked = !viewModel.imgBClicked
                         }
                         // current user answer
                         if (viewModel.imgBClicked) {
@@ -553,7 +520,7 @@ fun Chooser(
                             viewModel.selectedB = ""
                         }
                     },
-                    enabled = !viewModel.imgAClicked && !viewModel.imgBClicked
+                    enabled = (!viewModel.imgAClicked && !viewModel.imgBClicked) || !viewModel.getQuestionStatus()
                 ) {
                     Image(
                         imgB,
@@ -568,6 +535,40 @@ fun Chooser(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TopBar(
+    titleText: String,
+    drawerState: DrawerState,
+    scope: CoroutineScope
+) {
+    CenterAlignedTopAppBar(
+        title = {
+            Text(
+                text = titleText
+            )
+        },
+        actions = {
+            IconButton(onClick = {}) {
+                Icon(imageVector = Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "")
+            }
+        },
+        navigationIcon = {
+            IconButton(onClick = {
+                scope.launch {
+                    if (drawerState.isClosed) {
+                        drawerState.open()
+                    } else {
+                        drawerState.close()
+                    }
+                }
+            }) {
+                Icon(Icons.Default.Menu, contentDescription = "Menu")
+            }
+        }
+    )
 }
 
 @Composable
